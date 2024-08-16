@@ -1,0 +1,281 @@
+# Running LIN on RSSC Samples
+Following along with Dr. Pierce Ward's Github tutorial: https://hackmd.io/191eqd9wQOSIPQyyjp5XUA?view
+
+### Step 1: Open sourmash environment to have a separate sourmash install just for our LINS results (don't want to have clashing environments)
+Create the environment: 
+* `mamba create -n lin_sourmash -y -c conda-forge -c bioconda sourmash`
+
+Activate the environment: 
+* `conda activate lin_sourmash`
+
+### Step 2: Make "smashLIN" directory in Ralstonia
+* `mkdir /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN`
+* `cd /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN`
+
+### Step 3: Create additional directories for inputs and databases
+* `mkdir /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN/inputs`
+* `mkdir /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN/databases`
+
+### Step 4: Download data
+* This will be our reference database filled with signatures, it contains roughly 32 Ralstonia genomes (both pathogenic and nonpathogenic) down below, as well as thier corresponding LINs and taxonomy information: 
+
+#### database
+- `curl -JLO https://osf.io/download/wxtk3/`
+- `mv ralstonia*.zip ./databases/ralstonia.zip`
+
+#### taxonomy csv
+* `curl -JLO https://osf.io/download/sj2z7/`
+* `mv ralstonia32.lin-taxonomy.csv ./databases`
+
+#### lingroup csv
+* `curl -JLO https://osf.io/download/nqms2/`
+* `mv LINgroups.csv ./databases/ralstonia.lingroups.csv`
+
+## Running this below can tell us more information about our sourmash signatures 
+* just for my own note-taking:
+* `sourmash sig fileinfo ERR7672970.trim.sig`
+    Output: 
+    ** loading from 'ERR7672970.trim.sig'
+    path filetype: MultiIndex
+    location: ERR7672970.trim.sig
+    is database? no
+    has manifest? yes
+    num signatures: 3
+    ** examining manifest...
+    total hashes: 8857497
+    summary of sketches:
+    1 sketches with DNA, k=21, scaled=2000, abund      2909002 total hashes
+    1 sketches with DNA, k=31, scaled=2000, abund      3160217 total hashes
+    1 sketches with DNA, k=51, scaled=2000, abund      2788278 total hashes
+
+* 32 genomes are represented in this database and saves sketches of k-mers at k=21, k=31, and k=51
+* In total: 524 k-mers
+
+
+## Step 5: Now, we can run sourmash gather to find the closest reference genome(s) in the database.
+K-mer sizes = 31
+
+Run:
+SRR8553642
+SRR14267071
+SRR20746679
+SRR22278231
+ERR7672970
+SRR5234505
+`sourmash gather SRR22278231.trim.sig /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN/databases/ralstonia.zip -k 31 --output SRR22278231.k31.gather.csv`
+* Didn't note everything for each, but sourmash gather outputs:
+    * Finda matches within the 32 genomes available that have 50kb or greater
+    * Narrows search by telling you top-down with the best Ralstonia s. species results
+    * Abundance-weighted query = tells you how much of your match shares the # of bp with the metagenome 
+
+
+# Now, run sourmash tax metagenome to integrate taxonomic information into gather results
+* The output it provides is a LINs group report 
+LINS: 
+* Way to classify bacteria (for our purposes, at a strain-level)
+* Uses sequence similarity between genomes. How far in detail of LINs that you are at indicates similarity specificity (class, species, subspecies, etc.)
+
+Each of the four columns: 
+1. Name 
+2. LINs
+3. Percent containment: the percent of the file matched to this lingroup 
+4. Number of bp contained: the percentage of bp matched to its LINs group
+
+`sourmash tax metagenome -g /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN/SRR5234505.k31.gather.csv \
+   -t /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN/databases/ralstonia32.lin-taxonomy.csv \
+   --lins --lingroup /group/ctbrowngrp4/mmerid/Ralstonia/smashLIN/databases/ralstonia.lingroups.csv`
+
+* outputs are given as a "lingroup.tsv" (had to be re-ran again due to an error, didn't run sourmash signatures by abundance*)
+
+# July 19, 2024: Running Sourmash Tax
+* Had some trouble running it the first time, trying again with this: 
+
+`sourmash tax metagenome -g ERR7672970.k31.gather.csv \
+  -t ralstonia32.lin-taxonomy.csv \
+ --lins --lingroup ralstonia.lingroups.csv`
+
+### Output: 
+Trying to read LIN taxonomy assignments.
+loaded 1 gather results from 'ERR7672970.k31.gather.csv'.
+loaded results for 1 queries from 1 gather CSVs
+Read 20 lingroup rows and found 20 distinct lingroup prefixes.
+name    lin     percent_containment     num_bp_contained
+A_Total_reads;B_PhylII  14;1;0;0;0;3;0  0.00    670000
+A_Total_reads;B_PhylII;C_IIB    14;1;0;0;0;3;0;0        0.00    670000
+A_Total_reads;B_PhylII;C_IIB;D_seq1&seq2        14;1;0;0;0;3;0;0;0;0;1;0;0;0;0  0.00    670000
+A_Total_reads;B_PhylII;C_IIB;D_seq1&seq2;E_seq1 14;1;0;0;0;3;0;0;0;0;1;0;0;0;0;0;0      0.00    670000
+A_Total_reads;B_PhylI   14;1;0;0;0;0;0;0;0;0    0.00    652000
+A_Total_reads;B_PhylI;C_seq15   14;1;0;0;0;0;0;0;0;0;2  0.00    652000
+
+
+`sourmash tax metagenome -g SRR14267071.k31.gather.csv \
+    -t ralstonia32.lin-taxonomy.csv \
+     --lins --lingroup ralstonia.lingroups.csv`
+
+
+
+### Output: 
+Trying to read LIN taxonomy assignments.
+loaded 1 gather results from 'SRR14267071.k31.gather.csv'.
+loaded results for 1 queries from 1 gather CSVs
+Read 20 lingroup rows and found 20 distinct lingroup prefixes.
+name    lin     percent_containment     num_bp_contained
+O_outgroup      14;1;0;1;2      0.00    360000
+A_Total_reads;B_PhylII  14;1;0;0;0;3;0  0.00    436000
+A_Total_reads;B_PhylII;C_IIB    14;1;0;0;0;3;0;0        0.00    436000
+A_Total_reads;B_PhylII;C_IIB;D_seq4     14;1;0;0;0;3;0;0;1;0;0;0;0;0    0.00    436000
+A_Total_reads;B_PhylI   14;1;0;0;0;0;0;0;0;0    0.01    830000
+A_Total_reads;B_PhylI;C_seq34   14;1;0;0;0;0;0;0;0;0;6  0.01    830000
+
+* Very weird that percent containment for everything is 0%
+* For SRR14267071, Phyl IC seq10 would be our best match.
+
+More results below:
+
+sourmash tax metagenome -g SRR20746679.k31.gather.csv \
+     -t ralstonia32.lin-taxonomy.csv \
+      --lins --lingroup ralstonia.lingroups.csv
+
+
+Trying to read LIN taxonomy assignments.
+loaded 1 gather results from 'SRR20746679.k31.gather.csv'.
+loaded results for 1 queries from 1 gather CSVs
+Read 20 lingroup rows and found 20 distinct lingroup prefixes.
+name    lin     percent_containment     num_bp_contained
+A_Total_reads;B_PhylII  14;1;0;0;0;3;0  0.01    592000
+A_Total_reads;B_PhylII;C_IIC    14;1;0;0;0;3;0;2        0.01    592000
+A_Total_reads;B_PhylIII 14;1;0;0;0;0;1  0.00    158000
+A_Total_reads;B_PhylIII;C_seq19/60      14;1;0;0;0;0;1;0;1;1;0;0        0.00    158000
+
+
+
+sourmash tax metagenome -g SRR22278231.k31.gather.csv \
+     -t ralstonia32.lin-taxonomy.csv \
+     --lins --lingroup ralstonia.lingroups.csv
+
+name    lin     percent_containment     num_bp_contained
+A_Total_reads;B_PhylII  14;1;0;0;0;3;0  0.00    670000
+A_Total_reads;B_PhylII;C_IIB    14;1;0;0;0;3;0;0        0.00    670000
+A_Total_reads;B_PhylII;C_IIB;D_seq1&seq2        14;1;0;0;0;3;0;0;0;0;1;0;0;0;0  0.00    670000
+A_Total_reads;B_PhylII;C_IIB;D_seq1&seq2;E_seq1 14;1;0;0;0;3;0;0;0;0;1;0;0;0;0;0;0      0.00    670000
+A_Total_reads;B_PhylI   14;1;0;0;0;0;0;0;0;0    0.00    652000
+A_Total_reads;B_PhylI;C_seq15   14;1;0;0;0;0;0;0;0;0;2  0.00    652000
+
+sourmash tax metagenome -g SRR5234505.k31.gather.csv \
+      -t ralstonia32.lin-taxonomy.csv \
+      --lins --lingroup ralstonia.lingroups.csv
+
+name    lin     percent_containment     num_bp_contained
+O_outgroup      14;1;0;1;2      0.00    130000
+A_Total_reads;B_PhylII  14;1;0;0;0;3;0  0.01    444000
+A_Total_reads;B_PhylII;C_IIB    14;1;0;0;0;3;0;0        0.01    444000
+A_Total_reads;B_PhylII;C_IIB;D_seq25    14;1;0;0;0;3;0;0;0;0;6;0;0;0;0;0;0;0;0;1        0.01    444000
+
+sourmash tax metagenome -g SRR8553642.k31.gather.csv \
+    -t ralstonia32.lin-taxonomy.csv \
+     --lins --lingroup ralstonia.lingroups.csv
+
+
+Trying to read LIN taxonomy assignments.
+loaded 1 gather results from 'SRR8553642.k31.gather.csv'.
+loaded results for 1 queries from 1 gather CSVs
+Read 20 lingroup rows and found 20 distinct lingroup prefixes.
+name    lin     percent_containment     num_bp_contained
+A_Total_reads;B_PhylI   14;1;0;0;0;0;0;0;0;0    0.00    332000
+A_Total_reads;B_PhylI;C_seq15   14;1;0;0;0;0;0;0;0;0;2  0.00    332000
+
+-------
+cd /home/ntpierce/2024-nsurp/output.ralstonia
+* First, I want to see all the .tsv files: (base) 
+
+## August 16: Trying Snakemake!
+Have tried Snakemake previously but could not get my code to automate. Will try following Github tutorial first using the IBD Project as an example. Will install two samples to try with first. Will follow it exactly as it appears (ex, "2020-NSURP" as directory even though it's 2024). Want to make it easier to catch mistakes this way. 
+
+First, we'll need to make a separate diectory called "2020-NSURP" to keep our raw reads in there. No need for trimming, Snakemake can take care of it. 
+
+`mkdir 2020-NSURP`
+
+Then, we'll create a conda environment to install our necessary Snakemake packages. 
+The Snakemake packages include: 
+* 
+* 
+* 
+
+`conda create -n snakemake-env python=3.10`
+
+Activate the environment
+`conda activate snakemake-env`
+
+Now install Snakemake: 
+`conda install -y snakemake-minimal`
+
+Let's install two samples for a practice run:
+CSM7KOJO and CSM7KOJE
+https://ibdmdb.org/downloads/raw/HMP2/MGX/2018-05-04/CSM7KOJO.tar
+https://ibdmdb.org/downloads/raw/HMP2/MGX/2018-05-04/CSM7KOJE.tar
+
+Let's make a raw data directory first to download our files and have a place for them: 
+`mkdir raw_data`
+`mkdir quality`
+
+Untar them so that we can get two reads for each of the samples: 
+`tar xf CSM7KOJO.tar`
+`tar xf CSM7KOJE.tar`
+`chmod u-w *fastq.gz`
+
+We've finished properly setting up, SNAKEMAKE!!!!
+`nano Snakefile`
+Make your file as needed (will take notes as needed after)
+
+We'll try a dry-run of this: 
+`snakemake -n`
+A dry run will check that all the input files exist prior to running 
+
+Here's the code I ran: 
+# List of sample names
+SAMPLES = ["CSM7KOJE", "CSM7KOJ0"]
+
+# Rule to specify the final output files for all samples
+rule all:
+    input:
+        expand("quality/{sample}_1.trim.fastq.gz", sample=SAMPLES),
+        expand("quality/{sample}_2.trim.fastq.gz", sample=SAMPLES)
+
+# Rule to trim reads for each sample
+rule trim_reads:
+    input:
+        in1="raw_data/{sample}_R1.fastq.gz",
+        in2="raw_data/{sample}_R2.fastq.gz"
+    output:
+        out1="quality/{sample}_1.trim.fastq.gz",
+        out2="quality/{sample}_2.trim.fastq.gz",
+        json="quality/{sample}.fastp.json",
+        html="quality/{sample}.fastp.html"
+    shell:
+        """
+        fastp --in1 {input.in1}  --in2 {input.in2}  \
+        --out1 {output.out1} --out2 {output.out2}  \
+        --detect_adapter_for_pe  --qualified_quality_phred 4 \
+        --length_required 31 --correction \
+        --json {output.json} --html {output.html}
+        """
+
+And the error received: 
+MissingInputException in rule trim_reads in file /group/ctbrowngrp4/mmerid/2020-NSURP/Snakefile, line 11:
+Missing input files for rule trim_reads:
+    output: quality/CSM7KOJ0_1.trim.fastq.gz, quality/CSM7KOJ0_2.trim.fastq.gz, quality/CSM7KOJ0.fastp.json, quality/CSM7KOJ0.fastp.html
+    wildcards: sample=CSM7KOJ0
+    affected files:
+        raw_data/CSM7KOJ0_R1.fastq.gz
+        raw_data/CSM7KOJ0_R2.fastq.gz
+
+Ways to troubleshoot this, it seems that they couldn't find the input files: 
+1. Check my directory and make sure the files "exist": `ls /group/ctbrowngrp4/mmerid/2020-NSURP/raw_data`
+FOUND MY MISTAKE, possibly. Misspelled a file name 
+Didn't 
+Also didn't install fastp, so may need to do that as well.
+
+To download fastp: 
+`conda install -c bioconda fastp`
+
+Run it again  
