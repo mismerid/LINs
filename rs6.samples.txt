@@ -1,0 +1,6 @@
+sketch/ERR7672970.sig
+sketch/SRR14267071.sig
+sketch/SRR20746679.sig
+sketch/SRR22278231.sig
+sketch/SRR5234505.sig
+sketch/SRR8553642.sig

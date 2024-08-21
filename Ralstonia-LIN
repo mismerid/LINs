@@ -279,3 +279,80 @@ To download fastp:
 `conda install -c bioconda fastp`
 
 Run it again  
+
+
+
+friday
+
+ 858  snakemake -n
+  859  snakemake -n --use-conda 
+  860  conda config --show channels
+  861  conda config --set channel_priority strict
+  862  snakemake -n
+  863  snakemake -n --use-conda
+  864  snakemake --use-conda
+  865  snakemake --use-conda -c1
+  866  snakemake -c1
+
+
+  snakemake --use-conda -c1 --rerun-incomplete
+
+
+SECOND TAKE
+rule sourmash_gather:
+    input:
+        sig="sketch/{sample}.sig",
+        database="/group/ctbrowngrp4/mmerid/Ralstonia/databases/ralstonia.zip"
+    output:
+        out="gather/{sample}.k31.gather.csv"
+    conda: "sourmash-env.yaml"
+    shell:
+        """
+        sourmash gather {input.sig} {input.database} -k 31 --output {output.out} --query-from-file quality/{wildcards.sample}_1.trim.fastq.gz
+        """
+
+
+ORIGINAL
+rule sourmash_gather:
+    input:
+        sig="sketch/{sample}.sig",
+        database="/group/ctbrowngrp4/mmerid/Ralstonia/databases/ralstonia.zip"
+    output:
+        out="gather/{sample}.k31.gather.csv"
+    conda: "sourmash-env.yaml"
+    shell:
+        """
+        sourmash gather {input.sig} {input.database} -k 31 --output {output.out}
+        """
+
+
+
+
+THIRD TAKE
+rule sourmash_gather:
+    input:
+        sig="sketch/{sample}.sig",
+        database="/group/ctbrowngrp4/mmerid/Ralstonia/databases/ralstonia.zip"
+    output:
+        out="gather/{sample}.k31.gather.csv"
+    conda: "sourmash-env.yaml"
+    shell:
+        """
+        sourmash gather {input.sig} {input.database} -k 31 --dna --output {output.out}
+        """
+
+
+
+TAKE 4: 
+
+rule sourmash_gather:
+    input:
+        sig="sketch/{sample}.sig",
+        database="/group/ctbrowngrp4/mmerid/Ralstonia/databases/ralstonia.zip"
+    output:
+        out="gather/{sample}.k31.gather.csv"
+    conda: "sourmash-env.yaml"
+    shell:
+        """
+        sourmash gather {input.sig} {input.database} -k 31 --dna --output {output.out}
+        """
